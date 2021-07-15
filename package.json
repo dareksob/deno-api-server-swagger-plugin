@@ -5,5 +5,9 @@
   "repository": "git@github.com:dareksob/deno-api-server-swagger-plugin.git",
   "author": "Darius Sobczak",
   "license": "MIT",
-  "private": false
+  "private": false,
+  "scripts": {
+    "preversion": "git pull && git fetch",
+    "postversion": "git push --tag"
+  }
 }
