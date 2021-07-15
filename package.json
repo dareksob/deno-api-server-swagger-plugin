@@ -8,6 +8,7 @@
   "private": false,
   "scripts": {
     "preversion": "git pull && git fetch",
-    "postversion": "git push --tag"
+    "postversion": "git push --tag",
+    "output-test": "deno run --allow-write tests/output-test.ts"
   }
 }

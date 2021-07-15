@@ -1,4 +1,4 @@
-import {Api, Route, EMethod, IRoute} from "./deps.ts";
+import {Api, Route, EMethod, IRoute, KeyMatch} from "./deps.ts";
 
 interface ISwaggerInfo {
   title: string,
@@ -29,13 +29,18 @@ interface ISwaggerTag {
   externalDocs?: ISwaggerExternalDocs
 }
 
+interface ISwaggerParameterSchema {
+  type: string,
+}
+
 interface ISwaggerRouteParameter {
   name: string,
-  in: 'query',
+  in: string | 'query' | 'path' | 'header',
   description?: string,
   required: boolean,
-  style: 'form' | 'json',
-  explode: boolean,
+  style?: 'form' | 'json',
+  explode?: boolean,
+  schema: ISwaggerParameterSchema
 }
 
 interface ISwaggerPath {
@@ -44,12 +49,21 @@ interface ISwaggerPath {
   description?: string,
   operationId?: string,
   parameters: ISwaggerRouteParameter[],
+  responses: TSwaggerResponses,
 }
+
+interface ISwaggerResponse {
+  description: string
+}
+
+type TSwaggerResponses = Record<string, ISwaggerResponse>;
 
 interface ISwaggerProp extends ISwaggerPath {}
 
 type TSwaggerPath = Record<string, ISwaggerPath>;
 type TSwaggerPaths = Record<string, TSwaggerPath>;
+
+type TObject = Record<string, any>;
 
 interface IConfig {
   serverUrl?: URL | string,
@@ -57,7 +71,17 @@ interface IConfig {
   servers?: ISwaggerServer[],
   tags?: ISwaggerTag[],
   basePath?: string,
-  hideSwagger?: boolean,
+  allowSwaggerRoutes?: boolean,
+}
+
+const validSchemaTypes = ['string', 'array', 'object', 'integer', 'number'];
+
+/**
+ * convert api server path with swagger placeholders
+ * @param uri
+ */
+function getUri(uri: string): string {
+  return uri.replace(/\:([a-z-A-Z0-9_-]+)/gm, '{$1}');
 }
 
 export default function plugin(api: Api, config: IConfig) {
@@ -80,15 +104,50 @@ export default function plugin(api: Api, config: IConfig) {
     const paths: TSwaggerPaths = {};
 
     api.routes.forEach((route: IRoute) => {
-      const uri = route.matcher.uri;
+      const uri = getUri(route.matcher.uri);
       const routePaths: TSwaggerPath = paths[uri] ? paths[uri] :  {};
 
       if (route instanceof Route) {
         // assign path infos
         route.methods.forEach((method: string) => {
+          const parameters = [];
+
+          // add parameters by keymatch
+          if (route.matcher instanceof KeyMatch) {
+            const describe = route.matcher.describe;
+
+            for (const name in describe) {
+              const keyDescribe = describe[name];
+
+              const type = `${keyDescribe.type}`.toLowerCase();
+
+              const param: TObject = {
+                in: 'path',
+                name,
+                required: true,
+                schema: {
+                  type: 'string',
+                }
+              };
+
+              if (validSchemaTypes.includes(type)) {
+                param.schema = {
+                  type,
+                };
+              }
+
+              parameters.push(param as ISwaggerRouteParameter);
+            }
+          }
+
           const swaggerPath: ISwaggerPath = {
             tags: [],
-            parameters: []
+            parameters,
+            responses: {
+              '200': {
+                description: 'OK'
+              }
+            }
           };
 
           // extend swagger path information by property
@@ -115,7 +174,7 @@ export default function plugin(api: Api, config: IConfig) {
     });
 
     // hide swagger optional
-    if (config.hideSwagger) {
+    if (!config.allowSwaggerRoutes) {
       delete paths[swaggerUri];
     }
 
