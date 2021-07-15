@@ -1,0 +1,1 @@
+export { default as swaggerPlugin } from './plugin.ts';
