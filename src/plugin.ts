@@ -29,6 +29,8 @@ interface ISwaggerTag {
   externalDocs?: ISwaggerExternalDocs
 }
 
+const validSchemaTypes = ['string', 'array', 'object', 'integer', 'number'];
+
 interface ISwaggerParameterSchema {
   type: string,
 }
@@ -51,6 +53,7 @@ interface ISwaggerPath {
   parameters: ISwaggerRouteParameter[],
   responses: TSwaggerResponses,
 }
+const validPathProps = ['summary', 'description', 'operationId' ];
 
 interface ISwaggerResponse {
   description: string
@@ -63,8 +66,6 @@ interface ISwaggerProp extends ISwaggerPath {}
 type TSwaggerPath = Record<string, ISwaggerPath>;
 type TSwaggerPaths = Record<string, TSwaggerPath>;
 
-type TObject = Record<string, any>;
-
 interface IConfig {
   serverUrl?: URL | string,
   info: ISwaggerInfo,
@@ -73,8 +74,6 @@ interface IConfig {
   basePath?: string,
   allowSwaggerRoutes?: boolean,
 }
-
-const validSchemaTypes = ['string', 'array', 'object', 'integer', 'number'];
 
 /**
  * convert api server path with swagger placeholders
@@ -121,7 +120,7 @@ export default function plugin(api: Api, config: IConfig) {
 
               const type = `${keyDescribe.type}`.toLowerCase();
 
-              const param: TObject = {
+              const param: ISwaggerRouteParameter = {
                 in: 'path',
                 name,
                 required: true,
@@ -136,7 +135,7 @@ export default function plugin(api: Api, config: IConfig) {
                 };
               }
 
-              parameters.push(param as ISwaggerRouteParameter);
+              parameters.push(param);
             }
           }
 
@@ -153,16 +152,30 @@ export default function plugin(api: Api, config: IConfig) {
           // extend swagger path information by property
           if (route.props.has(routePropName)) {
             const p = route.props.get(routePropName) as ISwaggerProp;
+            const { tags, parameters, responses, ...append } = p;
 
-            if (Array.isArray(p?.tags)) {
-              swaggerPath.tags = p?.tags;
+            for (const key in append) {
+              if (validPathProps.includes(key)) {
+                // @ts-ignore
+                swaggerPath[key] = append[key];
+              }
             }
 
-            if (Array.isArray(p?.parameters)) {
-              swaggerPath.parameters = [
-                ...swaggerPath.parameters,
-                ...p?.parameters
-              ];
+            if (Array.isArray(tags)) {
+              swaggerPath.tags = tags;
+            }
+
+            // extend or overwrite
+            if (Array.isArray(parameters)) {
+              // todo merge auto generated with custom prop
+              swaggerPath.parameters = [ ...parameters ];
+            }
+
+            // extend or overwrite responses
+            if (responses) {
+              swaggerPath.responses = {
+                ...responses
+              };
             }
           }
 

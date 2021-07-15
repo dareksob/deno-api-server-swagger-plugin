@@ -14,6 +14,35 @@ const route = new Route('POST', new KeyMatch(
 // create api
 const api = mockApi(route);
 
+api
+    .addRoute(
+        new Route(EMethod.GET, new KeyMatch('/cat/:name', {name: {type: 'String'}}))
+            .prop('swagger', {
+                tags: ['cat'],
+                summary: 'get cat by name',
+                description: 'resolve cat by name with data',
+                responses: {
+                    '404': {
+                        description: 'Not found cat'
+                    }
+                }
+            })
+    )
+
+    .addRoute(
+        new Route(EMethod.POST, new KeyMatch('/cat/:name', {name: {type: 'String'}}))
+            .prop('swagger', {
+                tags: ['cat'],
+                summary: 'create cat by name',
+                description: 'create cat by name with data',
+                responses: {
+                    '404': {
+                        description: 'Not found cat'
+                    }
+                }
+            })
+    )
+
 // @ts-ignore
 await swaggerPlugin(api, {
   info: {
