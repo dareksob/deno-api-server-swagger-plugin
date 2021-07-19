@@ -1,6 +1,6 @@
 {
   "name": "deno-api-server-swagger-plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "swagger plugin for deno api server",
   "repository": "git@github.com:dareksob/deno-api-server-swagger-plugin.git",
   "author": "Darius Sobczak",
@@ -8,6 +8,7 @@
   "private": false,
   "scripts": {
     "preversion": "git pull && git fetch",
-    "postversion": "git push --tag"
+    "postversion": "git push --tag && git push",
+    "output-test": "deno run --allow-write tests/output-test.ts"
   }
 }

@@ -1,4 +1,4 @@
-import {Api, Route, EMethod, IRoute} from "./deps.ts";
+import {Api, Route, EMethod, IRoute, KeyMatch} from "./deps.ts";
 
 interface ISwaggerInfo {
   title: string,
@@ -29,13 +29,20 @@ interface ISwaggerTag {
   externalDocs?: ISwaggerExternalDocs
 }
 
+const validSchemaTypes = ['string', 'array', 'object', 'integer', 'number'];
+
+interface ISwaggerParameterSchema {
+  type: string,
+}
+
 interface ISwaggerRouteParameter {
   name: string,
-  in: 'query',
+  in: string | 'query' | 'path' | 'header',
   description?: string,
   required: boolean,
-  style: 'form' | 'json',
-  explode: boolean,
+  style?: 'form' | 'json',
+  explode?: boolean,
+  schema: ISwaggerParameterSchema
 }
 
 interface ISwaggerPath {
@@ -44,9 +51,21 @@ interface ISwaggerPath {
   description?: string,
   operationId?: string,
   parameters: ISwaggerRouteParameter[],
+  responses: TSwaggerResponses,
 }
 
-interface ISwaggerProp extends ISwaggerPath {}
+const validPathProps = ['summary', 'description', 'operationId'];
+
+interface ISwaggerResponse {
+  description: string
+}
+
+type TSwaggerResponses = Record<string, ISwaggerResponse>;
+
+interface ISwaggerProp extends ISwaggerPath {
+  // @ts-ignore: allow to add custom parameters
+  [key: string]: unknown,
+}
 
 type TSwaggerPath = Record<string, ISwaggerPath>;
 type TSwaggerPaths = Record<string, TSwaggerPath>;
@@ -57,7 +76,15 @@ interface IConfig {
   servers?: ISwaggerServer[],
   tags?: ISwaggerTag[],
   basePath?: string,
-  hideSwagger?: boolean,
+  allowSwaggerRoutes?: boolean,
+}
+
+/**
+ * convert api server path with swagger placeholders
+ * @param uri
+ */
+function getUri(uri: string): string {
+  return uri.replace(/\:([a-z-A-Z0-9_-]+)/gm, '{$1}');
 }
 
 export default function plugin(api: Api, config: IConfig) {
@@ -68,65 +95,115 @@ export default function plugin(api: Api, config: IConfig) {
 
   // config servers
   const servers: ISwaggerServer[] = Array.isArray(config?.servers)
-    ? [ ...config.servers ]
+    ? [...config.servers]
     : [];
 
   if (config?.serverUrl) {
-    servers.push({ url: `${config?.serverUrl}` });
+    servers.push({url: `${config?.serverUrl}`});
   }
-  servers.push({ url: api.host });
+  servers.push({url: api.host});
 
-  jsonEndpointRoute.addPipe(async ({response}) => {
-    const paths: TSwaggerPaths = {};
+  jsonEndpointRoute
+    .addPipe(({response}) => {
+      const paths: TSwaggerPaths = {};
 
-    api.routes.forEach((route: IRoute) => {
-      const uri = route.matcher.uri;
-      const routePaths: TSwaggerPath = paths[uri] ? paths[uri] :  {};
+      api.routes.forEach((route: IRoute) => {
+        const uri = getUri(route.matcher.uri);
+        const routePaths: TSwaggerPath = paths[uri] ? paths[uri] : {};
 
-      if (route instanceof Route) {
-        // assign path infos
-        route.methods.forEach((method: string) => {
-          const swaggerPath: ISwaggerPath = {
-            tags: [],
-            parameters: []
-          };
+        if (route instanceof Route) {
+          // assign path infos
+          route.methods.forEach((method: string) => {
+            const parameters = [];
 
-          // extend swagger path information by property
-          if (route.props.has(routePropName)) {
-            const p = route.props.get(routePropName) as ISwaggerProp;
+            // add parameters by keymatch
+            if (route.matcher instanceof KeyMatch) {
+              const describe = route.matcher.describe;
 
-            if (Array.isArray(p?.tags)) {
-              swaggerPath.tags = p?.tags;
+              for (const name in describe) {
+                const keyDescribe = describe[name];
+
+                const type = `${keyDescribe.type}`.toLowerCase();
+
+                const param: ISwaggerRouteParameter = {
+                  in: 'path',
+                  name,
+                  required: true,
+                  schema: {
+                    type: 'string',
+                  }
+                };
+
+                if (validSchemaTypes.includes(type)) {
+                  param.schema = {
+                    type,
+                  };
+                }
+
+                parameters.push(param);
+              }
             }
 
-            if (Array.isArray(p?.parameters)) {
-              swaggerPath.parameters = [
-                ...swaggerPath.parameters,
-                ...p?.parameters
-              ];
-            }
-          }
+            const swaggerPath: ISwaggerPath = {
+              tags: [],
+              parameters,
+              responses: {
+                '200': {
+                  description: 'OK'
+                }
+              }
+            };
 
-          routePaths[`${method}`.toLowerCase()] = swaggerPath;
-        })
+            // extend swagger path information by property
+            if (route.props.has(routePropName)) {
+              const p = route.props.get(routePropName) as ISwaggerProp;
+              const {tags, parameters, responses, ...append} = p;
+
+              for (const key in append) {
+                if (validPathProps.includes(key)) {
+                  // @ts-ignore: flexible data object
+                  swaggerPath[key] = append[key];
+                }
+              }
+
+              if (Array.isArray(tags)) {
+                swaggerPath.tags = tags;
+              }
+
+              // extend or overwrite
+              if (Array.isArray(parameters)) {
+                // todo merge auto generated with custom prop
+                swaggerPath.parameters = [...parameters];
+              }
+
+              // extend or overwrite responses
+              if (responses) {
+                swaggerPath.responses = {
+                  ...responses
+                };
+              }
+            }
+
+            routePaths[`${method}`.toLowerCase()] = swaggerPath;
+          })
+        }
+
+        paths[uri] = routePaths; // check if exists
+      });
+
+      // hide swagger optional
+      if (!config.allowSwaggerRoutes) {
+        delete paths[swaggerUri];
       }
 
-      paths[uri] = routePaths; // check if exists
+      response.body = {
+        openapi: "3.0.1",
+        info: config.info,
+        tags: config.tags,
+        servers,
+        paths,
+      }
     });
-
-    // hide swagger optional
-    if (config.hideSwagger) {
-      delete paths[swaggerUri];
-    }
-
-    response.body = {
-      openapi: "3.0.1",
-      info: config.info,
-      tags: config.tags,
-      servers,
-      paths,
-    }
-  });
 
   api.addRoute(jsonEndpointRoute);
 }
