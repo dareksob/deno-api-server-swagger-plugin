@@ -1,82 +1,94 @@
 import {Api, Route, EMethod, IRoute, KeyMatch} from "./deps.ts";
 
 interface ISwaggerInfo {
-  title: string,
-  description: string,
-  version: string,
-  termsOfService?: string,
+  title: string;
+  description: string;
+  version: string;
+  termsOfService?: string;
   contact?: {
-    email: string,
+    email: string;
   },
   license?: {
-    name: string,
-    url: string,
+    name: string;
+    url: string;
   }
 }
 
 interface ISwaggerServer {
-  url: string,
+  url: string;
 }
 
 interface ISwaggerExternalDocs {
-  description?: string,
-  url: string,
+  description?: string;
+  url: string;
 }
 
 interface ISwaggerTag {
-  name: string,
-  url: string,
-  externalDocs?: ISwaggerExternalDocs
+  name: string;
+  url: string;
+  externalDocs?: ISwaggerExternalDocs;
 }
 
 const validSchemaTypes = ['string', 'array', 'object', 'integer', 'number'];
 
 interface ISwaggerParameterSchema {
-  type: string,
+  type: string;
 }
 
 interface ISwaggerRouteParameter {
-  name: string,
-  in: string | 'query' | 'path' | 'header',
-  description?: string,
-  required: boolean,
-  style?: 'form' | 'json',
-  explode?: boolean,
-  schema: ISwaggerParameterSchema
+  name: string;
+  in: string | 'query' | 'path' | 'header';
+  description?: string;
+  required: boolean;
+  style?: 'form' | 'json';
+  explode?: boolean;
+  schema: ISwaggerParameterSchema;
 }
 
 interface ISwaggerPath {
-  tags: string[],
-  summary?: string,
-  description?: string,
-  operationId?: string,
-  parameters: ISwaggerRouteParameter[],
-  responses: TSwaggerResponses,
+  tags: string[];
+  summary?: string;
+  description?: string;
+  operationId?: string;
+  parameters: ISwaggerRouteParameter[];
+  responses: TSwaggerResponses;
 }
 
 const validPathProps = ['summary', 'description', 'operationId'];
 
 interface ISwaggerResponse {
-  description: string
+  description: string;
 }
 
 type TSwaggerResponses = Record<string, ISwaggerResponse>;
 
 interface ISwaggerProp extends ISwaggerPath {
   // @ts-ignore: allow to add custom parameters
-  [key: string]: unknown,
+  [key: string]: unknown;
 }
+
+interface ISecurityDefinition extends Record<string, unknown> {}
+interface ISecurityDefinitionApi {
+  type: string;
+  name: string;
+  in: string;
+}
+interface ISecurityDefinitions extends Record<string, ISecurityDefinition | ISecurityDefinitionApi | any>{}
+
+interface IDefinitions extends Record<string, Object>{}
 
 type TSwaggerPath = Record<string, ISwaggerPath>;
 type TSwaggerPaths = Record<string, TSwaggerPath>;
 
 interface IConfig {
-  serverUrl?: URL | string,
-  info: ISwaggerInfo,
-  servers?: ISwaggerServer[],
-  tags?: ISwaggerTag[],
-  basePath?: string,
-  allowSwaggerRoutes?: boolean,
+  serverUrl?: URL | string;
+  info: ISwaggerInfo;
+  servers?: ISwaggerServer[];
+  tags?: ISwaggerTag[];
+  basePath?: string;
+  allowSwaggerRoutes?: boolean;
+  securityDefinitions?: ISecurityDefinitions;
+  definitions?: IDefinitions;
 }
 
 /**
