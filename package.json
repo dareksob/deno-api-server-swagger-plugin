@@ -1,6 +1,6 @@
 {
   "name": "deno-api-server-swagger-plugin",
-  "version": "0.0.3",
+  "version": "0.0.10",
   "description": "swagger plugin for deno api server",
   "repository": "git@github.com:dareksob/deno-api-server-swagger-plugin.git",
   "author": "Darius Sobczak",

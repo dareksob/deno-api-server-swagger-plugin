@@ -43,7 +43,7 @@ api
             })
     )
 
-// @ts-ignore
+// @ts-ignore: ignore mockApi
 await swaggerPlugin(api, {
   info: {
     title: 'super api',
@@ -54,7 +54,7 @@ await swaggerPlugin(api, {
 
 await api.sendByArguments('GET', '/swagger.json');
 
-const body = api?.lastContext?.response.body as Record<string, any>;
+const body = api?.lastContext?.response.body as Record<string, unknown>;
 
 const target = './output-test.tmp.json';
 await Deno.writeTextFile(target, JSON.stringify(body));
