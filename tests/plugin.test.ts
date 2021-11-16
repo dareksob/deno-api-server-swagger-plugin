@@ -1,6 +1,6 @@
 import {assertEquals} from "https://deno.land/std@0.101.0/testing/asserts.ts";
 import {EMethod, Route, KeyMatch} from "../src/deps.ts";
-import {mockApi} from 'https://deno.land/x/deno_api_server/dev_mod.ts';
+import {mockApi} from 'https://deno.land/x/deno_api_server@v0.2.11/dev_mod.ts';
 import {default as swaggerPlugin} from '../src/plugin.ts';
 
 
@@ -8,6 +8,8 @@ const info = {
     title: 'Deno swagger test',
     description: 'Testing'
 };
+
+type PathsResponse = Record<string, Record<string, any>>;
 
 Deno.test('Endpoint should generate basic data', async () => {
     const route = new Route('GET', '/hello');
@@ -22,11 +24,11 @@ Deno.test('Endpoint should generate basic data', async () => {
 
     assertEquals(api?.lastContext?.response.status, 200);
 
-    const body = api?.lastContext?.response.body as Record<string, unknown>;
+    const body = api?.lastContext?.response.body as Record<string, any>;
     assertEquals(typeof body, 'object');
     assertEquals(body.openapi, '3.0.1');
-    assertEquals(body.info?.title, info.title);
-    assertEquals(body.info?.description, info.description);
+    assertEquals(body?.info?.title, info.title);
+    assertEquals(body?.info?.description, info.description);
 })
 
 Deno.test('Swagger path should contain basic route infos', async () => {
@@ -41,7 +43,7 @@ Deno.test('Swagger path should contain basic route infos', async () => {
     await api.sendByArguments('GET', '/swagger.json');
 
     const body = api?.lastContext?.response.body as Record<string, unknown>;
-    const paths = body?.paths;
+    const paths = body?.paths as PathsResponse;
 
     assertEquals(typeof paths['/hello']['get'], 'object');
 
@@ -61,7 +63,7 @@ Deno.test('Plugin should hide swagger endpoint', async () => {
     await api.sendByArguments('GET', '/swagger.json');
 
     const body = api?.lastContext?.response.body as Record<string, unknown>;
-    const paths = body?.paths;
+    const paths = body?.paths as PathsResponse;
 
     assertEquals(paths.hasOwnProperty('/swagger.json'), true, 'Swagger endpoint defined');
 })
@@ -82,7 +84,7 @@ Deno.test('Swagger path should contain basic route infos', async () => {
     await api.sendByArguments('GET', '/swagger.json');
 
     const body = api?.lastContext?.response.body as Record<string, unknown>;
-    const paths = body?.paths;
+    const paths = body?.paths as PathsResponse;
 
     assertEquals(paths['/hello'].hasOwnProperty('get'), true, 'Should have get method');
     assertEquals(paths['/hello'].hasOwnProperty('post'), true, 'Should have post method');
@@ -105,7 +107,7 @@ Deno.test('Swagger path should be extend with details by props', async () => {
     await api.sendByArguments('GET', '/swagger.json');
 
     const body = api?.lastContext?.response.body as Record<string, unknown>;
-    const paths = body?.paths;
+    const paths = body?.paths as PathsResponse;
 
     const helloPath = paths['/hello']['get'];
 
@@ -147,13 +149,13 @@ Deno.test('Swagger describe KeyMatch props', async () => {
     await api.sendByArguments('GET', '/swagger.json');
 
     const body = api?.lastContext?.response.body as Record<string, unknown>;
-    const paths = body?.paths;
+    const paths = body?.paths as PathsResponse;
 
     const path = paths['/get/{id}/as/{view}']['post'];
 
     assertEquals(typeof path, 'object');
-    assertEquals(path.parameters.length, 2);
-    assertEquals(path.parameters[0], {
+    assertEquals(path?.parameters.length, 2);
+    assertEquals(path?.parameters[0], {
         in: 'path',
         name: 'id',
         required: true,
