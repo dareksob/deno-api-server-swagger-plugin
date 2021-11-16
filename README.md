@@ -1,7 +1,7 @@
 # deno-api-server-swagger-plugin
 Plugin for `deno-api-server` to create a swagger json definition endpoint.
 
-Status `WIP`
+Status `Depricated` use https://deno.land/x/deno_api_server@v0.3.0/plugins/swagger/plugin.ts
 
 ## Integration
 `/swagger.json` to get the swagger format file
