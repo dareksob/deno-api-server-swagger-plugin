@@ -9,6 +9,8 @@
   "scripts": {
     "preversion": "git pull && git fetch",
     "postversion": "git push --tag && git push",
-    "output-test": "deno run --allow-write tests/output-test.ts"
+    "output-test": "deno run --allow-write tests/output-test.ts",
+    "unit": "deno test --allow-read --fail-fast",
+    "unit:w": "deno test --watch --allow-read --fail-fast"
   }
 }
